@@ -1,7 +1,7 @@
 import get from 'lodash.get'
 import PropTypes from 'prop-types'
 import React from 'react'
-import { TouchableOpacity, View } from 'react-native'
+import { TouchableOpacity, View, FlatList } from 'react-native'
 
 function noop() {}
 
@@ -75,51 +75,62 @@ class TreeView extends React.Component {
     this[method](id)
   }
 
-  handleNodePressed = async ({ node, level }) => {
-    const nodePressResult = await this.props.onNodePress({ node, level })
+  handleNodePressed = async ({ item, level }) => {
+    const nodePressResult = await this.props.onNodePress({ item, level })
 
-    if (nodePressResult !== false && this.hasChildrenNodes(node)) {
-      this.toggleCollapse(node[this.props.idKey])
+    if (nodePressResult !== false && this.hasChildrenNodes(item)) {
+      this.toggleCollapse(item[this.props.idKey])
     }
   }
 
   Tree = ({ nodes, level }) => {
-    return nodes.map((node) => {
-      const isExpanded = this.isExpanded(node[this.props.idKey])
-      const hasChildrenNodes = this.hasChildrenNodes(node)
-      const shouldRenderLevel = hasChildrenNodes && isExpanded
+    return (
+      <FlatList
+        scrollEnabled={false}
+        extraData={this.props.extraData}
+        style={{ backgroundColor: 'white' }}
+        key={nodes[this.props.idKey]}
+        keyExtractor={(item, index) => item.id.toString()}
+        data={nodes}
+        renderItem={({ item }) => {
+          const isExpanded = this.isExpanded(item[this.props.idKey])
+          const hasChildrenNodes = this.hasChildrenNodes(item)
+          const shouldRenderLevel = hasChildrenNodes && isExpanded
 
-      return (
-        <View
-          key={node[this.props.idKey]}
-          style={{
-            height: isExpanded
-              ? 'auto'
-              : this.props.getCollapsedNodeHeight({
-                  [this.props.idKey]: node[this.props.idKey],
+          return (
+            <View
+              key={item[this.props.idKey]}
+              style={{
+                height: isExpanded
+                  ? 'auto'
+                  : this.props.getCollapsedNodeHeight({
+                    [this.props.idKey]: item[this.props.idKey],
+                    level,
+                  }),
+                zIndex: 1,
+                overflow: 'hidden',
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => this.handleNodePressed({ item, level })}
+                onLongPress={() => this.props.onNodeLongPress({ item, level })}
+              >
+                {React.createElement(this.props.renderNode, {
+                  item,
                   level,
-                }),
-            zIndex: 1,
-            overflow: 'hidden',
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => this.handleNodePressed({ node, level })}
-            onLongPress={() => this.props.onNodeLongPress({ node, level })}
-          >
-            {React.createElement(this.props.renderNode, {
-              node,
-              level,
-              isExpanded,
-              hasChildrenNodes,
-            })}
-          </TouchableOpacity>
-          {shouldRenderLevel && (
-            <this.Tree nodes={node[this.props.childrenKey]} level={level + 1} />
-          )}
-        </View>
-      )
-    })
+                  isExpanded,
+                  hasChildrenNodes,
+                })}
+              </TouchableOpacity>
+              {shouldRenderLevel && (
+                <this.Tree nodes={item[this.props.childrenKey]} level={level + 1} />
+              )}
+            </View>
+          )
+        }
+        }
+      />
+    )
   }
 
   render() {
